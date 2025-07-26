@@ -12,7 +12,12 @@ const ses = new SESClient({
 
 // Authentication helper
 const authenticateApiKey = (apiKey) => {
-  if (!apiKey) {
+  // Add more detailed logging to debug the apiKey value
+  console.log('Received apiKey:', apiKey);
+  console.log('API_KEYS env variable:', process.env.API_KEYS);
+
+  if (!apiKey || apiKey === 'undefined') {
+    console.error('API key is missing or undefined');
     throw new Error('API key is required');
   }
 
@@ -33,31 +38,32 @@ const authenticateApiKey = (apiKey) => {
 
 export const handler = async (event) => {
   try {
-    // Parse the incoming request
-    const body = JSON.parse(event.body || '{}');
-    const apiKey = event.headers['x-api-key'];
+    // Parse the incoming SNS message
+    const snsMessage = JSON.parse(event.Records[0].Sns.Message);
     
+    // Log the raw message for debugging
+    console.log('Raw SNS message:', JSON.stringify(snsMessage));
+    
+    const { to, subject, htmlBody, apiKey } = snsMessage;
+    
+    // Validate apiKey before authentication
+    if (!apiKey) {
+      console.error('API key not found in SNS message');
+      throw new Error('API key is required');
+    }
+
     try {
       const appName = authenticateApiKey(apiKey);
       console.log(`Request authenticated for app: ${appName}`);
     } catch (authError) {
-      return {
-        statusCode: authError.message === 'API key is required' ? 401 : 403,
-        body: JSON.stringify({ error: authError.message })
-      };
+      console.error('Authentication error:', authError.message);
+      throw authError; // Let the error be caught by the main try-catch
     }
 
     // Validate required fields
-    if (!body.to || !body.subject || !body.htmlBody) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({
-          error: 'Missing required fields. Please provide to, subject, and htmlBody'
-        })
-      };
+    if (!to || !subject || !htmlBody) {
+      throw new Error('Missing required fields. Please provide to, subject, and htmlBody');
     }
-
-    const { to, subject, htmlBody } = body;
 
     const params = {
       Destination: { ToAddresses: [to] },
@@ -96,13 +102,8 @@ export const handler = async (event) => {
       stack: error.stack
     });
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: error.message,
-        code: error.code,
-        name: error.name
-      })
-    };
+    // Since this is triggered by SNS, we should let the error propagate
+    // to trigger the SNS retry policy instead of returning an HTTP response
+    throw error;
   }
 };
