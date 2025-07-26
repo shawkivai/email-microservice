@@ -10,14 +10,45 @@ const ses = new SESClient({
   }
 });
 
-// Lambda handler function
+// Authentication helper
+const authenticateApiKey = (apiKey) => {
+  if (!apiKey) {
+    throw new Error('API key is required');
+  }
+
+  // Get the list of valid API keys from environment variables
+  const validApiKeys = process.env.API_KEYS ? process.env.API_KEYS.split(',') : [];
+  console.log('Valid API keys loaded');
+  
+  if (!validApiKeys.includes(apiKey)) {
+    console.warn(`Authentication failed: Invalid API key provided: ${apiKey.substring(0, 3)}...`);
+    throw new Error('Invalid API key');
+  }
+
+  // Get the authenticated app name for logging
+  const appNames = process.env.APP_NAMES ? process.env.APP_NAMES.split(',') : [];
+  const appIndex = validApiKeys.indexOf(apiKey);
+  return appIndex >= 0 && appIndex < appNames.length ? appNames[appIndex] : 'unknown';
+};
+
 export const handler = async (event) => {
   try {
-    // Parse the incoming event body
-    const body = JSON.parse(event.body);
+    // Parse the incoming request
+    const body = JSON.parse(event.body || '{}');
+    const apiKey = event.headers['x-api-key'];
+    
+    try {
+      const appName = authenticateApiKey(apiKey);
+      console.log(`Request authenticated for app: ${appName}`);
+    } catch (authError) {
+      return {
+        statusCode: authError.message === 'API key is required' ? 401 : 403,
+        body: JSON.stringify({ error: authError.message })
+      };
+    }
 
     // Validate required fields
-    if (!body || !body.to || !body.subject || !body.htmlBody) {
+    if (!body.to || !body.subject || !body.htmlBody) {
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -39,12 +70,12 @@ export const handler = async (event) => {
       Source: process.env.FROM_EMAIL
     };
 
-    console.log('Sending email with params:', JSON.stringify(params, null, 2));
+    console.log(`Sending email with params:`, JSON.stringify(params, null, 2));
 
     console.log('Using AWS credentials:', {
-      region: process.env.AWS_REGION,
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID ? process.env.AWS_ACCESS_KEY_ID.substring(0, 5) + '...' : 'undefined',
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? 'present (hidden)' : 'undefined'
+      region: process.env.SES_REGION,
+      accessKeyId: process.env.SES_ACCESS_KEY_ID ? process.env.SES_ACCESS_KEY_ID.substring(0, 5) + '...' : 'undefined',
+      secretAccessKey: process.env.SES_SECRET_ACCESS_KEY ? 'present (hidden)' : 'undefined'
     });
     
     const command = new SendEmailCommand(params);
