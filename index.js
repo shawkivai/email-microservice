@@ -13,8 +13,6 @@ const ses = new SESClient({
 // Authentication helper
 const authenticateApiKey = (apiKey) => {
   // Add more detailed logging to debug the apiKey value
-  console.log('Received apiKey:', apiKey);
-  console.log('API_KEYS env variable:', process.env.API_KEYS);
 
   if (!apiKey || apiKey === 'undefined') {
     console.error('API key is missing or undefined');
