@@ -31,39 +31,9 @@ A microservice for sending emails through AWS Simple Email Service (SES).
 # Start the service (requires Node.js v16+)
 npm start
 
-# Start the service with Node.js v15 compatibility
-npm run start:v15
-
 # Start in development mode with auto-restart (requires Node.js v16+)
 npm run dev
-
-# Start in development mode with Node.js v15 compatibility
-npm run dev:v15
-
-# Test AWS SES connectivity
-npm run test-aws
-
-# Send a test email
-npm run test-email
-
-# Test authentication mechanism
-npm run test-auth
-
-# Run client example
-npm run client-example
-
-# Check environment variables
-npm run check-env
 ```
-
-### Node.js Version Compatibility
-
-This service requires Node.js v16 or later by default. If you're using Node.js v15, use the v15-compatible scripts:
-
-- `npm run start:v15` instead of `npm start`
-- `npm run dev:v15` instead of `npm run dev`
-
-The v15-compatible version (`index-v15.js`) is a modified version of the main code that avoids using features not supported in Node.js v15.
 
 ## Authentication
 
@@ -94,7 +64,7 @@ X-API-Key: app1_key_12345
 Send an email by making a POST request to the `/send-email` endpoint with your API key in the header:
 
 ```json
-POST /send-email
+POST /
 Content-Type: application/json
 X-API-Key: your_api_key_here
 
